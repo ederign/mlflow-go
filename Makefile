@@ -1,6 +1,7 @@
 .PHONY: test/unit test/integration test/integration-ci test/integration-ci-postgres gen dev/up dev/down dev/reset dev/seed dev/postgres-up dev/postgres-down dev/up-postgres help lint vet fmt tidy check run-sample
 
 # Configuration
+# Also update .github/workflows/go.yaml when changing this version
 MLFLOW_VERSION ?= 3.8.1
 MLFLOW_PORT ?= 5000
 MLFLOW_DATA ?= $(shell pwd)/.mlflow
