@@ -371,6 +371,9 @@ make check
 # Start local MLflow server (requires uv)
 make dev/up
 
+# Start MLflow from opendatahub-io/mlflow fork
+make dev/up-midstream
+
 # Seed sample prompts (featuring Bella and Dora!)
 make dev/seed
 
@@ -379,6 +382,9 @@ make run-sample
 
 # Run integration tests
 make test/integration
+
+# Run integration tests against midstream
+make test/integration-ci MLFLOW_SOURCE="mlflow @ git+https://github.com/opendatahub-io/mlflow@master"
 
 # Stop local MLflow server
 make dev/down

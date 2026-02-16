@@ -1,8 +1,11 @@
-.PHONY: test/unit test/integration test/integration-ci test/integration-ci-postgres gen dev/up dev/down dev/reset dev/seed dev/postgres-up dev/postgres-down dev/up-postgres help lint vet fmt tidy check run-sample
+.PHONY: test/unit test/integration test/integration-ci test/integration-ci-postgres gen dev/up dev/up-midstream dev/down dev/reset dev/seed dev/postgres-up dev/postgres-down dev/up-postgres help lint vet fmt tidy check run-sample
 
 # Configuration
-# Also update .github/workflows/go.yaml when changing this version
-MLFLOW_VERSION ?= 3.8.1
+# Also update MLFLOW_VERSION in .github/workflows/go.yaml when changing this
+MLFLOW_VERSION ?= 3.9.0
+# To run against Red Hat midstream (opendatahub-io/mlflow), use: make dev/up-midstream
+MLFLOW_MIDSTREAM_SOURCE ?= mlflow @ git+https://github.com/opendatahub-io/mlflow@master
+MLFLOW_WITH ?= $(if $(MLFLOW_SOURCE),$(MLFLOW_SOURCE),mlflow==$(MLFLOW_VERSION))
 MLFLOW_PORT ?= 5000
 MLFLOW_DATA ?= $(shell pwd)/.mlflow
 LOCALBIN ?= $(shell pwd)/bin
@@ -38,6 +41,7 @@ help:
 	@echo ""
 	@echo "Development:"
 	@echo "  make dev/up           - Start local MLflow server (foreground, Ctrl+C to stop)"
+	@echo "  make dev/up-midstream - Start MLflow from opendatahub-io/mlflow fork"
 	@echo "  make dev/down         - Stop local MLflow server"
 	@echo "  make dev/seed         - Seed sample prompts (Bella and Dora!) into running server"
 	@echo "  make dev/reset        - Nuke MLflow data (run dev/up + dev/seed after)"
@@ -70,20 +74,20 @@ test/integration-ci: $(UV)
 	@rm -rf $(MLFLOW_TEST_DATA)
 	@mkdir -p $(MLFLOW_TEST_DATA)
 	@echo "Starting MLflow test server on port $(MLFLOW_TEST_PORT)..."
-	@$(UV) run --with mlflow==$(MLFLOW_VERSION) mlflow server \
+	@$(UV) run --with "$(MLFLOW_WITH)" mlflow server \
 		--host 127.0.0.1 \
 		--port $(MLFLOW_TEST_PORT) \
 		--backend-store-uri sqlite:///$(MLFLOW_TEST_DATA)/mlflow.db \
 		--default-artifact-root $(MLFLOW_TEST_DATA)/artifacts &
 	@echo "Waiting for MLflow to be ready..."
-	@READY=0; for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do \
+	@READY=0; for i in $$(seq 1 30); do \
 		if curl -s http://127.0.0.1:$(MLFLOW_TEST_PORT)/health > /dev/null 2>&1; then \
 			echo "MLflow is ready!"; \
 			READY=1; \
 			sleep 2; \
 			break; \
 		fi; \
-		echo "Waiting... ($$i/15)"; \
+		echo "Waiting... ($$i/30)"; \
 		sleep 2; \
 	done; \
 	if [ $$READY -eq 0 ]; then echo "ERROR: MLflow failed to start" && exit 1; fi
@@ -151,11 +155,14 @@ $(UV):
 dev/up: $(UV)
 	@mkdir -p $(MLFLOW_DATA)
 	@echo "Starting MLflow server on port $(MLFLOW_PORT)... (Ctrl+C to stop)"
-	$(UV) run --with mlflow==$(MLFLOW_VERSION) mlflow server \
+	$(UV) run --with "$(MLFLOW_WITH)" mlflow server \
 		--host 127.0.0.1 \
 		--port $(MLFLOW_PORT) \
 		--backend-store-uri sqlite:///$(MLFLOW_DATA)/mlflow.db \
 		--default-artifact-root $(MLFLOW_DATA)/artifacts
+
+dev/up-midstream:
+	@$(MAKE) dev/up MLFLOW_SOURCE="$(MLFLOW_MIDSTREAM_SOURCE)"
 
 dev/down:
 	@echo "Stopping MLflow server..."
@@ -201,7 +208,7 @@ dev/postgres-down:
 
 dev/up-postgres: $(UV)
 	@echo "Starting MLflow server with PostgreSQL backend on port $(MLFLOW_PORT)..."
-	$(UV) run --with mlflow==$(MLFLOW_VERSION) --with psycopg2-binary mlflow server \
+	$(UV) run --with "$(MLFLOW_WITH)" --with psycopg2-binary mlflow server \
 		--host 127.0.0.1 \
 		--port $(MLFLOW_PORT) \
 		--backend-store-uri $(POSTGRES_URI)
@@ -234,19 +241,19 @@ test/integration-ci-postgres: $(UV)
 		sleep 2; \
 	done
 	@echo "Starting MLflow test server on port $(MLFLOW_TEST_PORT) with PostgreSQL backend..."
-	@$(UV) run --with mlflow==$(MLFLOW_VERSION) --with psycopg2-binary mlflow server \
+	@$(UV) run --with "$(MLFLOW_WITH)" --with psycopg2-binary mlflow server \
 		--host 127.0.0.1 \
 		--port $(MLFLOW_TEST_PORT) \
 		--backend-store-uri postgresql://$(POSTGRES_USER):$(POSTGRES_PASSWORD)@localhost:$(MLFLOW_TEST_POSTGRES_PORT)/$(POSTGRES_DB) &
 	@echo "Waiting for MLflow to be ready..."
-	@READY=0; for i in 1 2 3 4 5 6 7 8 9 10 11 12 13 14 15; do \
+	@READY=0; for i in $$(seq 1 30); do \
 		if curl -s http://127.0.0.1:$(MLFLOW_TEST_PORT)/health > /dev/null 2>&1; then \
 			echo "MLflow is ready!"; \
 			READY=1; \
 			sleep 2; \
 			break; \
 		fi; \
-		echo "Waiting... ($$i/15)"; \
+		echo "Waiting... ($$i/30)"; \
 		sleep 2; \
 	done; \
 	if [ $$READY -eq 0 ]; then \
