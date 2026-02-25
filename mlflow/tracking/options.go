@@ -25,6 +25,17 @@ func WithExperimentTags(tags map[string]string) CreateExperimentOption {
 	}
 }
 
+// WithExperimentKind sets the experiment kind, which controls how the MLflow UI
+// displays the experiment. If not set, the UI will prompt users to select a type.
+func WithExperimentKind(kind ExperimentKind) CreateExperimentOption {
+	return func(o *createExperimentOptions) {
+		if o.tags == nil {
+			o.tags = make(map[string]string)
+		}
+		o.tags["mlflow.experimentKind"] = string(kind)
+	}
+}
+
 // createRunOptions holds configuration for a CreateRun call.
 type createRunOptions struct {
 	runName   string
