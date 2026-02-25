@@ -24,6 +24,20 @@ func newTestClient(t *testing.T, handler http.Handler) *Client {
 	return NewClient(tc)
 }
 
+func mustDecodeJSON(t *testing.T, r *http.Request, dst any) {
+	t.Helper()
+	if err := json.NewDecoder(r.Body).Decode(dst); err != nil {
+		t.Fatalf("failed to decode request body: %v", err)
+	}
+}
+
+func mustEncodeJSON(t *testing.T, w http.ResponseWriter, v any) {
+	t.Helper()
+	if err := json.NewEncoder(w).Encode(v); err != nil {
+		t.Fatalf("failed to encode response: %v", err)
+	}
+}
+
 // --- CreateExperiment tests ---
 
 func TestCreateExperiment_Success(t *testing.T) {
@@ -41,10 +55,10 @@ func TestCreateExperiment_Success(t *testing.T) {
 		var req struct {
 			Name string `json:"name"`
 		}
-		json.NewDecoder(r.Body).Decode(&req)
+		mustDecodeJSON(t, r, &req)
 		receivedName = req.Name
 
-		json.NewEncoder(w).Encode(map[string]any{
+		mustEncodeJSON(t, w, map[string]any{
 			"experiment_id": "123",
 		})
 	}))
@@ -80,10 +94,10 @@ func TestCreateExperiment_WithTags(t *testing.T) {
 		var req struct {
 			Tags []map[string]string `json:"tags"`
 		}
-		json.NewDecoder(r.Body).Decode(&req)
+		mustDecodeJSON(t, r, &req)
 		receivedTags = req.Tags
 
-		json.NewEncoder(w).Encode(map[string]any{
+		mustEncodeJSON(t, w, map[string]any{
 			"experiment_id": "456",
 		})
 	}))
@@ -110,7 +124,7 @@ func TestCreateExperiment_AlreadyExists(t *testing.T) {
 	client := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusConflict)
-		json.NewEncoder(w).Encode(map[string]string{
+		mustEncodeJSON(t, w, map[string]string{
 			"error_code": "RESOURCE_ALREADY_EXISTS",
 			"message":    "Experiment already exists",
 		})
@@ -141,7 +155,7 @@ func TestGetExperiment_Success(t *testing.T) {
 			t.Errorf("experiment_id = %q, want %q", r.URL.Query().Get("experiment_id"), "123")
 		}
 
-		json.NewEncoder(w).Encode(map[string]any{
+		mustEncodeJSON(t, w, map[string]any{
 			"experiment": map[string]any{
 				"experiment_id":     "123",
 				"name":              "my-experiment",
@@ -191,7 +205,7 @@ func TestGetExperiment_NotFound(t *testing.T) {
 	client := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{
+		mustEncodeJSON(t, w, map[string]string{
 			"error_code": "RESOURCE_DOES_NOT_EXIST",
 			"message":    "Experiment not found",
 		})
@@ -222,7 +236,7 @@ func TestGetExperimentByName_Success(t *testing.T) {
 			t.Errorf("experiment_name = %q, want %q", r.URL.Query().Get("experiment_name"), "my-experiment")
 		}
 
-		json.NewEncoder(w).Encode(map[string]any{
+		mustEncodeJSON(t, w, map[string]any{
 			"experiment": map[string]any{
 				"experiment_id": "123",
 				"name":          "my-experiment",
@@ -264,7 +278,7 @@ func TestDeleteExperiment_Success(t *testing.T) {
 		}
 
 		deleteCalled = true
-		json.NewEncoder(w).Encode(map[string]any{})
+		mustEncodeJSON(t, w, map[string]any{})
 	}))
 
 	err := client.DeleteExperiment(context.Background(), "123")
@@ -304,11 +318,11 @@ func TestUpdateExperiment_Success(t *testing.T) {
 			ExperimentID string `json:"experiment_id"`
 			NewName      string `json:"new_name"`
 		}
-		json.NewDecoder(r.Body).Decode(&req)
+		mustDecodeJSON(t, r, &req)
 		receivedID = req.ExperimentID
 		receivedName = req.NewName
 
-		json.NewEncoder(w).Encode(map[string]any{})
+		mustEncodeJSON(t, w, map[string]any{})
 	}))
 
 	err := client.UpdateExperiment(context.Background(), "123", "renamed")
@@ -354,7 +368,7 @@ func TestSearchExperiments_Success(t *testing.T) {
 			return
 		}
 
-		json.NewEncoder(w).Encode(map[string]any{
+		mustEncodeJSON(t, w, map[string]any{
 			"experiments": []map[string]any{
 				{
 					"experiment_id": "1",
@@ -388,7 +402,7 @@ func TestSearchExperiments_Success(t *testing.T) {
 func TestSearchExperiments_Empty(t *testing.T) {
 	client := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
+		mustEncodeJSON(t, w, map[string]any{
 			"experiments": []map[string]any{},
 		})
 	}))
@@ -430,12 +444,12 @@ func TestSetExperimentTag_Success(t *testing.T) {
 			Key          string `json:"key"`
 			Value        string `json:"value"`
 		}
-		json.NewDecoder(r.Body).Decode(&req)
+		mustDecodeJSON(t, r, &req)
 		receivedID = req.ExperimentID
 		receivedKey = req.Key
 		receivedValue = req.Value
 
-		json.NewEncoder(w).Encode(map[string]any{})
+		mustEncodeJSON(t, w, map[string]any{})
 	}))
 
 	err := client.SetExperimentTag(context.Background(), "123", "env", "prod")
@@ -484,7 +498,7 @@ func TestCreateRun_Success(t *testing.T) {
 			return
 		}
 
-		json.NewEncoder(w).Encode(map[string]any{
+		mustEncodeJSON(t, w, map[string]any{
 			"run": map[string]any{
 				"info": map[string]any{
 					"run_id":        "abc-123",
@@ -545,7 +559,7 @@ func TestGetRun_Success(t *testing.T) {
 			t.Errorf("run_id = %q, want %q", r.URL.Query().Get("run_id"), "abc-123")
 		}
 
-		json.NewEncoder(w).Encode(map[string]any{
+		mustEncodeJSON(t, w, map[string]any{
 			"run": map[string]any{
 				"info": map[string]any{
 					"run_id":        "abc-123",
@@ -618,7 +632,7 @@ func TestGetRun_NotFound(t *testing.T) {
 	client := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusNotFound)
-		json.NewEncoder(w).Encode(map[string]string{
+		mustEncodeJSON(t, w, map[string]string{
 			"error_code": "RESOURCE_DOES_NOT_EXIST",
 			"message":    "Run not found",
 		})
@@ -646,11 +660,11 @@ func TestUpdateRun_Success(t *testing.T) {
 			RunID  string `json:"run_id"`
 			Status int    `json:"status"`
 		}
-		json.NewDecoder(r.Body).Decode(&req)
+		mustDecodeJSON(t, r, &req)
 		receivedRunID = req.RunID
 		receivedStatus = req.Status
 
-		json.NewEncoder(w).Encode(map[string]any{
+		mustEncodeJSON(t, w, map[string]any{
 			"run_info": map[string]any{
 				"run_id":        "abc-123",
 				"experiment_id": "1",
@@ -706,11 +720,11 @@ func TestUpdateRun_NameOnly(t *testing.T) {
 			RunName string `json:"run_name"`
 			Status  int    `json:"status"`
 		}
-		json.NewDecoder(r.Body).Decode(&req)
+		mustDecodeJSON(t, r, &req)
 		receivedRunName = req.RunName
 		receivedStatus = req.Status
 
-		json.NewEncoder(w).Encode(map[string]any{
+		mustEncodeJSON(t, w, map[string]any{
 			"run_info": map[string]any{
 				"run_id":   "abc-123",
 				"run_name": "renamed-run",
@@ -751,7 +765,7 @@ func TestDeleteRun_Success(t *testing.T) {
 		}
 
 		deleteCalled = true
-		json.NewEncoder(w).Encode(map[string]any{})
+		mustEncodeJSON(t, w, map[string]any{})
 	}))
 
 	err := client.DeleteRun(context.Background(), "abc-123")
@@ -784,10 +798,10 @@ func TestSearchRuns_Success(t *testing.T) {
 		var req struct {
 			ExperimentIDs []string `json:"experiment_ids"`
 		}
-		json.NewDecoder(r.Body).Decode(&req)
+		mustDecodeJSON(t, r, &req)
 		receivedExperimentIDs = req.ExperimentIDs
 
-		json.NewEncoder(w).Encode(map[string]any{
+		mustEncodeJSON(t, w, map[string]any{
 			"runs": []map[string]any{
 				{
 					"info": map[string]any{
@@ -858,12 +872,12 @@ func TestLogMetric_Success(t *testing.T) {
 			Key   string  `json:"key"`
 			Value float64 `json:"value"`
 		}
-		json.NewDecoder(r.Body).Decode(&req)
+		mustDecodeJSON(t, r, &req)
 		receivedRunID = req.RunID
 		receivedKey = req.Key
 		receivedValue = req.Value
 
-		json.NewEncoder(w).Encode(map[string]any{})
+		mustEncodeJSON(t, w, map[string]any{})
 	}))
 
 	err := client.LogMetric(context.Background(), "abc-123", "rmse", 0.42)
@@ -919,12 +933,12 @@ func TestLogParam_Success(t *testing.T) {
 			Key   string `json:"key"`
 			Value string `json:"value"`
 		}
-		json.NewDecoder(r.Body).Decode(&req)
+		mustDecodeJSON(t, r, &req)
 		receivedRunID = req.RunID
 		receivedKey = req.Key
 		receivedValue = req.Value
 
-		json.NewEncoder(w).Encode(map[string]any{})
+		mustEncodeJSON(t, w, map[string]any{})
 	}))
 
 	err := client.LogParam(context.Background(), "abc-123", "lr", "0.01")
@@ -980,12 +994,12 @@ func TestSetTag_Success(t *testing.T) {
 			Key   string `json:"key"`
 			Value string `json:"value"`
 		}
-		json.NewDecoder(r.Body).Decode(&req)
+		mustDecodeJSON(t, r, &req)
 		receivedRunID = req.RunID
 		receivedKey = req.Key
 		receivedValue = req.Value
 
-		json.NewEncoder(w).Encode(map[string]any{})
+		mustEncodeJSON(t, w, map[string]any{})
 	}))
 
 	err := client.SetTag(context.Background(), "abc-123", "model", "sklearn")
@@ -1040,11 +1054,11 @@ func TestDeleteTag_Success(t *testing.T) {
 			RunID string `json:"run_id"`
 			Key   string `json:"key"`
 		}
-		json.NewDecoder(r.Body).Decode(&req)
+		mustDecodeJSON(t, r, &req)
 		receivedRunID = req.RunID
 		receivedKey = req.Key
 
-		json.NewEncoder(w).Encode(map[string]any{})
+		mustEncodeJSON(t, w, map[string]any{})
 	}))
 
 	err := client.DeleteTag(context.Background(), "abc-123", "model")
@@ -1099,13 +1113,13 @@ func TestLogBatch_Success(t *testing.T) {
 			Params  []map[string]any `json:"params"`
 			Tags    []map[string]any `json:"tags"`
 		}
-		json.NewDecoder(r.Body).Decode(&req)
+		mustDecodeJSON(t, r, &req)
 		receivedRunID = req.RunID
 		metricsCount = len(req.Metrics)
 		paramsCount = len(req.Params)
 		tagsCount = len(req.Tags)
 
-		json.NewEncoder(w).Encode(map[string]any{})
+		mustEncodeJSON(t, w, map[string]any{})
 	}))
 
 	err := client.LogBatch(context.Background(), "abc-123",
@@ -1150,7 +1164,7 @@ func TestLogBatch_EmptyRunID(t *testing.T) {
 func TestLogBatch_EmptyBatch(t *testing.T) {
 	client := newTestClient(t, http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{})
+		mustEncodeJSON(t, w, map[string]any{})
 	}))
 
 	// Empty batch should succeed (server handles it)

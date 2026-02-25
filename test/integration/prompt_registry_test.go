@@ -677,7 +677,9 @@ func TestPromptAliasRoundTrip(t *testing.T) {
 		t.Fatalf("NewClient() error = %v", err)
 	}
 
-	ctx := context.Background()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
+	defer cancel()
+
 	promptName := fmt.Sprintf("e2e-alias-roundtrip-%d", time.Now().UnixNano())
 
 	// Create prompt with 2 versions
@@ -744,6 +746,8 @@ func TestPromptAliasRoundTrip(t *testing.T) {
 	t.Logf("Loading deleted alias returned expected error: %v", err)
 
 	// Cleanup
+	_ = client.PromptRegistry().DeletePromptVersion(ctx, promptName, 1)
+	_ = client.PromptRegistry().DeletePromptVersion(ctx, promptName, 2)
 	_ = client.PromptRegistry().DeletePrompt(ctx, promptName)
 
 	t.Log("PromptAliasRoundTrip test passed")

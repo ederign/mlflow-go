@@ -15,6 +15,7 @@ UV ?= $(LOCALBIN)/uv
 PROTOC_GEN_GO ?= $(LOCALBIN)/protoc-gen-go
 GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
 GOLANGCI_LINT_VERSION ?= v2.1.6
+PROTOC_GEN_GO_VERSION ?= v1.36.11
 
 # PostgreSQL configuration
 POSTGRES_CONTAINER ?= mlflow-postgres
@@ -174,7 +175,7 @@ check: lint vet test/unit
 $(PROTOC_GEN_GO):
 	@mkdir -p $(LOCALBIN)
 	@echo "Installing protoc-gen-go..."
-	GOBIN=$(LOCALBIN) go install google.golang.org/protobuf/cmd/protoc-gen-go@latest
+	GOBIN=$(LOCALBIN) go install google.golang.org/protobuf/cmd/protoc-gen-go@$(PROTOC_GEN_GO_VERSION)
 
 # Code generation
 gen: tools/proto/fetch-protos.sh $(PROTOC_GEN_GO)
@@ -246,7 +247,6 @@ dev/reset: dev/down
 dev/seed:
 	@echo "Seeding sample data (featuring Bella and Dora!)..."
 	@./scripts/seed.sh
-	@echo "Seeding complete!"
 
 # PostgreSQL development targets
 dev/postgres-up:

@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"net/url"
 	"os"
+	"strings"
 	"sync"
 
 	"github.com/opendatahub-io/mlflow-go/internal/transport"
@@ -53,6 +54,12 @@ func NewClient(clientOpts ...Option) (*Client, error) {
 		return nil, fmt.Errorf("mlflow: tracking URI is required (set MLFLOW_TRACKING_URI or use WithTrackingURI)")
 	}
 
+	// Normalize bare host:port input (e.g., "localhost:5000") by prepending https://.
+	// Without a scheme, url.Parse treats the host as the scheme and the port as opaque data.
+	if !strings.Contains(opts.trackingURI, "://") {
+		opts.trackingURI = "https://" + opts.trackingURI
+	}
+
 	// Parse and validate the URI
 	parsedURL, err := url.Parse(opts.trackingURI)
 	if err != nil {
@@ -62,12 +69,6 @@ func NewClient(clientOpts ...Option) (*Client, error) {
 	// Enforce HTTPS unless insecure mode is enabled
 	if !opts.insecure && parsedURL.Scheme == "http" {
 		return nil, fmt.Errorf("mlflow: HTTP is not allowed (use HTTPS or enable insecure mode with WithInsecure)")
-	}
-
-	// Normalize scheme if missing
-	if parsedURL.Scheme == "" {
-		parsedURL.Scheme = "https"
-		opts.trackingURI = parsedURL.String()
 	}
 
 	// Create transport client

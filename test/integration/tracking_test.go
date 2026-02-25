@@ -31,6 +31,7 @@ func TestExperimentLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateExperiment() error = %v", err)
 	}
+	t.Cleanup(func() { _ = client.Tracking().DeleteExperiment(ctx, expID) })
 	if expID == "" {
 		t.Fatal("Expected non-empty experiment ID")
 	}
@@ -132,6 +133,7 @@ func TestRunLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateExperiment() error = %v", err)
 	}
+	t.Cleanup(func() { _ = client.Tracking().DeleteExperiment(ctx, expID) })
 
 	// Step 1: Create run
 	t.Log("Step 1: Creating run")
@@ -153,6 +155,7 @@ func TestRunLifecycle(t *testing.T) {
 		t.Errorf("Status = %q, want %q", run.Info.Status, tracking.RunStatusRunning)
 	}
 	runID := run.Info.RunID
+	t.Cleanup(func() { _ = client.Tracking().DeleteRun(ctx, runID) })
 	t.Logf("Created run %s", runID)
 
 	// Step 2: Log metrics
@@ -244,10 +247,6 @@ func TestRunLifecycle(t *testing.T) {
 		t.Errorf("Final status = %q, want %q", final.Info.Status, tracking.RunStatusFinished)
 	}
 
-	// Cleanup
-	_ = client.Tracking().DeleteRun(ctx, runID)
-	_ = client.Tracking().DeleteExperiment(ctx, expID)
-
 	t.Log("Run lifecycle test passed")
 }
 
@@ -267,12 +266,14 @@ func TestLogBatch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateExperiment() error = %v", err)
 	}
+	t.Cleanup(func() { _ = client.Tracking().DeleteExperiment(ctx, expID) })
 
 	run, err := client.Tracking().CreateRun(ctx, expID)
 	if err != nil {
 		t.Fatalf("CreateRun() error = %v", err)
 	}
 	runID := run.Info.RunID
+	t.Cleanup(func() { _ = client.Tracking().DeleteRun(ctx, runID) })
 
 	// Log batch
 	t.Log("Logging batch of metrics, params, and tags")
@@ -333,10 +334,6 @@ func TestLogBatch(t *testing.T) {
 		t.Errorf("tag version = %q, want %q", loaded.Data.Tags["version"], "2.0")
 	}
 
-	// Cleanup
-	_ = client.Tracking().DeleteRun(ctx, runID)
-	_ = client.Tracking().DeleteExperiment(ctx, expID)
-
 	t.Log("LogBatch test passed")
 }
 
@@ -356,6 +353,7 @@ func TestSearchRuns(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateExperiment() error = %v", err)
 	}
+	t.Cleanup(func() { _ = client.Tracking().DeleteExperiment(ctx, expID) })
 
 	// Create runs with different params
 	run1, err := client.Tracking().CreateRun(ctx, expID,
@@ -364,6 +362,7 @@ func TestSearchRuns(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateRun() 1 error = %v", err)
 	}
+	t.Cleanup(func() { _ = client.Tracking().DeleteRun(ctx, run1.Info.RunID) })
 	err = client.Tracking().LogParam(ctx, run1.Info.RunID, "model", "sklearn")
 	if err != nil {
 		t.Fatalf("LogParam() error = %v", err)
@@ -375,6 +374,7 @@ func TestSearchRuns(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateRun() 2 error = %v", err)
 	}
+	t.Cleanup(func() { _ = client.Tracking().DeleteRun(ctx, run2.Info.RunID) })
 	err = client.Tracking().LogParam(ctx, run2.Info.RunID, "model", "pytorch")
 	if err != nil {
 		t.Fatalf("LogParam() error = %v", err)
@@ -403,11 +403,6 @@ func TestSearchRuns(t *testing.T) {
 	if len(filtered.Runs) != 1 {
 		t.Errorf("Expected 1 filtered run, got %d", len(filtered.Runs))
 	}
-
-	// Cleanup
-	_ = client.Tracking().DeleteRun(ctx, run1.Info.RunID)
-	_ = client.Tracking().DeleteRun(ctx, run2.Info.RunID)
-	_ = client.Tracking().DeleteExperiment(ctx, expID)
 
 	t.Log("SearchRuns test passed")
 }
@@ -457,12 +452,14 @@ func TestDeleteRunTag(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateExperiment() error = %v", err)
 	}
+	t.Cleanup(func() { _ = client.Tracking().DeleteExperiment(ctx, expID) })
 
 	run, err := client.Tracking().CreateRun(ctx, expID)
 	if err != nil {
 		t.Fatalf("CreateRun() error = %v", err)
 	}
 	runID := run.Info.RunID
+	t.Cleanup(func() { _ = client.Tracking().DeleteRun(ctx, runID) })
 
 	// Set then delete a tag
 	err = client.Tracking().SetTag(ctx, runID, "temp_tag", "to_delete")
@@ -485,10 +482,6 @@ func TestDeleteRunTag(t *testing.T) {
 		t.Error("Tag 'temp_tag' should have been deleted")
 	}
 
-	// Cleanup
-	_ = client.Tracking().DeleteRun(ctx, runID)
-	_ = client.Tracking().DeleteExperiment(ctx, expID)
-
 	t.Log("DeleteTag test passed")
 }
 
@@ -504,14 +497,13 @@ func TestSearchExperimentsPagination(t *testing.T) {
 
 	// Create 3 experiments with a unique prefix for filtering
 	prefix := fmt.Sprintf("e2e-page-%d", time.Now().UnixNano())
-	var expIDs []string
 	for i := 1; i <= 3; i++ {
 		name := fmt.Sprintf("%s-%d", prefix, i)
 		id, err := client.Tracking().CreateExperiment(ctx, name)
 		if err != nil {
 			t.Fatalf("CreateExperiment(%d) error = %v", i, err)
 		}
-		expIDs = append(expIDs, id)
+		t.Cleanup(func() { _ = client.Tracking().DeleteExperiment(ctx, id) })
 	}
 
 	// Paginate with max_results=1, collecting all results
@@ -548,11 +540,6 @@ func TestSearchExperimentsPagination(t *testing.T) {
 	}
 	t.Logf("Paginated through %d experiments: %v", len(allNames), allNames)
 
-	// Cleanup
-	for _, id := range expIDs {
-		_ = client.Tracking().DeleteExperiment(ctx, id)
-	}
-
 	t.Log("SearchExperimentsPagination test passed")
 }
 
@@ -572,8 +559,8 @@ func TestSearchRunsPagination(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateExperiment() error = %v", err)
 	}
+	t.Cleanup(func() { _ = client.Tracking().DeleteExperiment(ctx, expID) })
 
-	var runIDs []string
 	for i := 1; i <= 3; i++ {
 		run, err := client.Tracking().CreateRun(ctx, expID,
 			tracking.WithRunName(fmt.Sprintf("run-%d", i)),
@@ -581,7 +568,7 @@ func TestSearchRunsPagination(t *testing.T) {
 		if err != nil {
 			t.Fatalf("CreateRun(%d) error = %v", i, err)
 		}
-		runIDs = append(runIDs, run.Info.RunID)
+		t.Cleanup(func() { _ = client.Tracking().DeleteRun(ctx, run.Info.RunID) })
 	}
 
 	// Paginate with max_results=1
@@ -615,12 +602,6 @@ func TestSearchRunsPagination(t *testing.T) {
 		t.Errorf("Expected 3 runs across pages, got %d", len(allRunIDs))
 	}
 	t.Logf("Paginated through %d runs", len(allRunIDs))
-
-	// Cleanup
-	for _, id := range runIDs {
-		_ = client.Tracking().DeleteRun(ctx, id)
-	}
-	_ = client.Tracking().DeleteExperiment(ctx, expID)
 
 	t.Log("SearchRunsPagination test passed")
 }

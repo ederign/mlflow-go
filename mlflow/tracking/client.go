@@ -160,6 +160,10 @@ func (c *Client) SearchExperiments(ctx context.Context, opts ...SearchExperiment
 		opt(o)
 	}
 
+	if o.maxResults <= 0 {
+		return nil, fmt.Errorf("mlflow: max results must be positive")
+	}
+
 	req := &mlflowpb.SearchExperiments{}
 
 	if o.filter != "" {
@@ -362,6 +366,10 @@ func (c *Client) SearchRuns(ctx context.Context, experimentIDs []string, opts ..
 	}
 	for _, opt := range opts {
 		opt(o)
+	}
+
+	if o.maxResults <= 0 {
+		return nil, fmt.Errorf("mlflow: max results must be positive")
 	}
 
 	req := &mlflowpb.SearchRuns{
