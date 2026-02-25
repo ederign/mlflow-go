@@ -1,5 +1,5 @@
 // Package mlflow provides a Go SDK for MLflow.
-// Currently supports Prompt Registry; more capabilities planned.
+// Supports Prompt Registry and Experiment Tracking.
 package mlflow
 
 import (
@@ -10,6 +10,7 @@ import (
 
 	"github.com/opendatahub-io/mlflow-go/internal/transport"
 	"github.com/opendatahub-io/mlflow-go/mlflow/promptregistry"
+	"github.com/opendatahub-io/mlflow-go/mlflow/tracking"
 )
 
 // Client is the MLflow SDK client.
@@ -20,6 +21,9 @@ type Client struct {
 
 	promptRegistryOnce sync.Once
 	promptRegistry     *promptregistry.Client
+
+	trackingOnce sync.Once
+	tracking     *tracking.Client
 }
 
 // NewClient creates a new MLflow client with the given options.
@@ -103,4 +107,13 @@ func (c *Client) PromptRegistry() *promptregistry.Client {
 		c.promptRegistry = promptregistry.NewClient(c.transport)
 	})
 	return c.promptRegistry
+}
+
+// Tracking returns the Tracking client for experiment and run management.
+// The sub-client is created lazily on first access.
+func (c *Client) Tracking() *tracking.Client {
+	c.trackingOnce.Do(func() {
+		c.tracking = tracking.NewClient(c.transport)
+	})
+	return c.tracking
 }
