@@ -55,8 +55,14 @@ func New(cfg Config) (*Client, error) {
 		}
 		httpClient = &http.Client{Timeout: timeout}
 		if cfg.Insecure {
-			httpClient.Transport = &http.Transport{
-				TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // user-requested via WithInsecure
+			if dt, ok := http.DefaultTransport.(*http.Transport); ok {
+				tr := dt.Clone()
+				tr.TLSClientConfig = &tls.Config{InsecureSkipVerify: true} //nolint:gosec // user-requested via WithInsecure
+				httpClient.Transport = tr
+			} else {
+				httpClient.Transport = &http.Transport{
+					TLSClientConfig: &tls.Config{InsecureSkipVerify: true}, //nolint:gosec // user-requested via WithInsecure
+				}
 			}
 		}
 	}

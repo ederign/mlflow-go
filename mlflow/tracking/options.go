@@ -18,10 +18,19 @@ func WithArtifactLocation(loc string) CreateExperimentOption {
 	}
 }
 
-// WithExperimentTags sets tags on the experiment.
+// WithExperimentTags sets tags on the experiment. Tags are merged with any
+// previously set tags (e.g., from WithExperimentKind).
 func WithExperimentTags(tags map[string]string) CreateExperimentOption {
 	return func(o *createExperimentOptions) {
-		o.tags = tags
+		if len(tags) == 0 {
+			return
+		}
+		if o.tags == nil {
+			o.tags = make(map[string]string, len(tags))
+		}
+		for k, v := range tags {
+			o.tags[k] = v
+		}
 	}
 }
 

@@ -577,7 +577,7 @@ func runTrackingDemo(ctx context.Context, client *mlflow.Client) {
 // clientOptions builds MLflow client options from environment variables.
 // MLFLOW_AUTH_TOKEN and MLFLOW_WORKSPACE are forwarded as HTTP headers.
 func clientOptions() []mlflow.Option {
-	opts := []mlflow.Option{mlflow.WithInsecure()}
+	var opts []mlflow.Option
 
 	headers := make(map[string]string)
 	if token := os.Getenv("MLFLOW_AUTH_TOKEN"); token != "" {
