@@ -6,6 +6,8 @@ for `opendatahub-io/mlflow-go`. All agents use Pi. Coding, review, and fixes use
 select one of these OpenAI models, including the security triage and risk
 assessment personas. There are no cross-provider Claude model aliases.
 The repository's `AGENTS.md` supplies SDK development context.
+The scope, model selection, and tradeoffs are recorded in
+[ADR-0012](../docs/adr/0012-fullsend-automation.md).
 
 The workflow uses the same Fullsend commit as the odh-dashboard reference:
 `af8cd4756172ec105c3aa523515c9c7d51684e90`. It is based on the upstream scaffold

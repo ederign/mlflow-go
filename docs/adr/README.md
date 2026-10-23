@@ -20,6 +20,8 @@ An ADR is a document that captures an important architectural decision made alon
 | [0008](0008-oss-only-target-platform.md) | OSS-Only Target Platform | Accepted | 2026-01-14 |
 | [0009](0009-experiment-tracking.md) | Experiment Tracking Client | Accepted | 2026-02-25 |
 | [0010](0010-artifact-management.md) | Artifact Management Client | Accepted | 2026-07-14 |
+| [0011](0011-authentication-hardening.md) | Authentication Hardening | Accepted | 2026-09-10 |
+| [0012](0012-fullsend-automation.md) | Fullsend Automation with OpenAI Models | Proposed | 2026-10-23 |
 
 ## Creating a New ADR
 
