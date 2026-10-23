@@ -1,0 +1,34 @@
+# Per-repository issue, review, and fix agents for opendatahub-io/mlflow-go.
+version: "1"
+runtime: pi
+keep_history: false
+roles:
+  - triage
+  - review
+  - coder
+agents:
+  - name: code
+    model: openai/gpt-6.1-sol
+  - name: triage
+    model: openai/gpt-6-luna
+  - name: review
+    model: openai/gpt-6.1-sol
+    subagents:
+      challenger: openai/gpt-6.1-sol
+      correctness: openai/gpt-6.1-sol
+      cross-repo-contracts: openai/gpt-6.1-sol
+      docs-currency: openai/gpt-6-luna
+      intent-coherence: openai/gpt-6.1-sol
+      risk-assessment: openai/gpt-6-luna
+      security: openai/gpt-6.1-sol
+      security-triage: openai/gpt-6-luna
+      style-conventions: openai/gpt-6-luna
+  - name: fix
+    model: openai/gpt-6.1-sol
+allowed_remote_resources:
+  - https://raw.githubusercontent.com/fullsend-ai/fullsend/
+  - https://raw.githubusercontent.com/fullsend-ai/agents/
+create_issues:
+  allow_targets:
+    repos:
+      - opendatahub-io/mlflow-go
