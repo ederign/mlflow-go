@@ -55,6 +55,10 @@ applies its triage/coding eligibility and authorization rules. Issue comments
 support `/fs-triage` and `/fs-code`. This setup targets GitHub issues; Jira-driven
 work requires additional configuration.
 
+For RHAI access, see [Jira connection and epic inspection](jira.md). The manual
+`fullsend-jira-check.yaml` workflow verifies a Jira read using the pinned CLI;
+it does not enable Jira-driven agent dispatch.
+
 ## Validation and maintenance
 
 Run `fullsend agent list --fullsend-dir .fullsend` to load and inspect the

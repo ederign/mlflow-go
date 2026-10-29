@@ -1,0 +1,70 @@
+name: Fullsend Jira connectivity
+
+on:
+  workflow_dispatch:
+    inputs:
+      issue_key:
+        description: RHAI issue or epic to read
+        required: true
+        default: RHAI-13723
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    if: github.repository == 'opendatahub-io/mlflow-go'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 15
+    steps:
+      - name: Validate connection settings
+        env:
+          ISSUE_KEY: ${{ inputs.issue_key }}
+          JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          [[ "${ISSUE_KEY}" =~ ^RHAI-[1-9][0-9]*$ ]] || { echo 'Expected an RHAI issue key.' >&2; exit 1; }
+          [[ "${JIRA_BASE_URL}" == 'https://redhat.atlassian.net' ]] || { echo 'Set JIRA_BASE_URL to https://redhat.atlassian.net.' >&2; exit 1; }
+          [[ -n "${JIRA_TOKEN}" && -n "${JIRA_USER_EMAIL}" ]] || { echo 'Configure JIRA_TOKEN and JIRA_USER_EMAIL Actions secrets.' >&2; exit 1; }
+
+      - name: Install pinned Fullsend
+        uses: fullsend-ai/fullsend/.github/actions/install-fullsend-cli@af8cd4756172ec105c3aa523515c9c7d51684e90
+        with:
+          mode: upstream
+          workflow_repository: fullsend-ai/fullsend
+          workflow_sha: af8cd4756172ec105c3aa523515c9c7d51684e90
+
+      - name: Read Jira issue with Fullsend
+        env:
+          ISSUE_KEY: ${{ inputs.issue_key }}
+          JIRA_BASE_URL: ${{ vars.JIRA_BASE_URL }}
+          JIRA_TOKEN: ${{ secrets.JIRA_TOKEN }}
+          JIRA_USER_EMAIL: ${{ secrets.JIRA_USER_EMAIL }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          umask 077
+          result=$(mktemp)
+          errors=$(mktemp)
+          trap 'rm -f "${result}" "${errors}"' EXIT
+          # Keep private Jira content and upstream error bodies out of public logs.
+          if ! fullsend issues get --tracker jira --project RHAI \
+            --number "${ISSUE_KEY#RHAI-}" --jira-url "${JIRA_BASE_URL}" \
+            > "${result}" 2> "${errors}"; then
+            echo 'Jira read failed. Check token, account access, and org API policy; see .fullsend/jira.md.' >&2
+            exit 1
+          fi
+          jq -e '.issue_type | type == "string" and length > 0' "${result}" > /dev/null
+          if jq -e '.issue_type == "Epic"' "${result}" > /dev/null; then
+            outcome='Epic confirmed.'
+          else
+            outcome='Issue accessible, but its type is not Epic. Follow the hierarchy checks in .fullsend/jira.md.'
+          fi
+          {
+            printf 'Read [%s](%s/browse/%s) successfully with Fullsend.\n\n' "${ISSUE_KEY}" "${JIRA_BASE_URL}" "${ISSUE_KEY}"
+            printf '%s\n' "${outcome}"
+          } >> "${GITHUB_STEP_SUMMARY}"
